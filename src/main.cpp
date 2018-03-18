@@ -245,20 +245,21 @@ int main() {
 		cout << "previous_path_x" << previous_path_x << endl;
 		cout << "previous_path_y" << previous_path_y << endl;
 		cout << "car_yaw" << car_yaw << endl;
+		
+		double s_incr = 0.5;
+		for(int i=0; i<50; i++){
+			auto s_next = car_s + (i+1)*s_incr;
+			auto d_next = 6.0;
 
-		if(previous_path_x.size() == 0){
-			for(int i=0; i<50; i++){
-				next_x_vals.push_back(car_x + 0.05 * i * cos(deg2rad(car_yaw)));
-				next_y_vals.push_back(car_y + 0.05 * i * sin(deg2rad(car_yaw)));
-			}
+			cout << s_next << d_next << endl;
 
-		}
-
-		else{
-			for(int i=0; i<previous_path_x.size(); i++){
-				next_x_vals.push_back(previous_path_x[i]);
-				next_y_vals.push_back(previous_path_y[i]);
-			}
+			vector<double> next_x_y  = getXY(s_next, 
+							d_next,
+							map_waypoints_s,
+							map_waypoints_x,
+							map_waypoints_y);
+			next_x_vals.push_back(next_x_y[0]);
+			next_y_vals.push_back(next_x_y[1]);
 		}
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
