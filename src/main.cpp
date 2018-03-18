@@ -242,13 +242,24 @@ int main() {
           	vector<double> next_x_vals;
           	vector<double> next_y_vals;
 
-		double dist_inc = 0.5;
-    		for(int i = 0; i < 50; i++)
-    		{
-          		next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-          		next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-    		}
+		cout << "previous_path_x" << previous_path_x << endl;
+		cout << "previous_path_y" << previous_path_y << endl;
+		cout << "car_yaw" << car_yaw << endl;
 
+		if(previous_path_x.size() == 0){
+			for(int i=0; i<50; i++){
+				next_x_vals.push_back(car_x + 0.05 * i * cos(deg2rad(car_yaw)));
+				next_y_vals.push_back(car_y + 0.05 * i * sin(deg2rad(car_yaw)));
+			}
+
+		}
+
+		else{
+			for(int i=0; i<previous_path_x.size(); i++){
+				next_x_vals.push_back(previous_path_x[i]);
+				next_y_vals.push_back(previous_path_y[i]);
+			}
+		}
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
           	msgJson["next_x"] = next_x_vals;
