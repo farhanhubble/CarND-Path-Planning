@@ -38,6 +38,8 @@ double distance(double x1, double y1, double x2, double y2)
 {
 	return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
 }
+
+
 int ClosestWaypoint(double x, double y, const vector<double> &maps_x, const vector<double> &maps_y)
 {
 
@@ -242,25 +244,24 @@ int main() {
           	vector<double> next_x_vals;
           	vector<double> next_y_vals;
 
-		cout << "previous_path_x" << previous_path_x << endl;
-		cout << "previous_path_y" << previous_path_y << endl;
-		cout << "car_yaw" << car_yaw << endl;
-		
-		double s_incr = 0.5;
-		for(int i=0; i<50; i++){
-			auto s_next = car_s + (i+1)*s_incr;
-			auto d_next = 6.0;
+						cout << "previous_path_x" << previous_path_x << endl;
+						cout << "previous_path_y" << previous_path_y << endl;
+						cout << "car_yaw" << car_yaw << endl;
+						
+						double s_incr = 0.5;
+						for(int i=0; i<50; i++){
+							auto s_next = car_s + (i+1)*s_incr;
+							auto d_next = 6.0;
 
-			cout << s_next << d_next << endl;
 
-			vector<double> next_x_y  = getXY(s_next, 
-							d_next,
-							map_waypoints_s,
-							map_waypoints_x,
-							map_waypoints_y);
-			next_x_vals.push_back(next_x_y[0]);
-			next_y_vals.push_back(next_x_y[1]);
-		}
+							vector<double> next_x_y  = getXY(s_next, 
+											d_next,
+											map_waypoints_s,
+											map_waypoints_x,
+											map_waypoints_y);
+							next_x_vals.push_back(next_x_y[0]);
+							next_y_vals.push_back(next_x_y[1]);
+						}
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
           	msgJson["next_x"] = next_x_vals;
