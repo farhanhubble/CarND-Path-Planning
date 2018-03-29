@@ -247,9 +247,15 @@ int main() {
 						cout << "previous_path_x" << previous_path_x << endl;
 						cout << "previous_path_y" << previous_path_y << endl;
 						cout << "car_yaw" << car_yaw << endl;
+
+
 						
-						double s_incr = 0.5;
+						//double s_incr = 0.5; // 0.5m/0.02s ~ 50MPH
+						const double max_tangent_accl = 1.0; //
+						const double v_incr = 0.018; // 0.018m/0.02s ~ 0.9ms/s, so accl < 1.0 m/s^2
 						for(int i=0; i<50; i++){
+							auto s_incr = v_incr * (i+1);
+							s_incr = s_incr > 0.5 ? 0.5 : s_incr;
 							auto s_next = car_s + (i+1)*s_incr;
 							auto d_next = 6.0;
 
