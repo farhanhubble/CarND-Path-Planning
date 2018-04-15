@@ -244,20 +244,34 @@ int main() {
           	vector<double> next_x_vals;
           	vector<double> next_y_vals;
 
-						cout << "previous_path_x" << previous_path_x << endl;
-						cout << "previous_path_y" << previous_path_y << endl;
-						cout << "car_yaw" << car_yaw << endl;
+						// cout << "previous_path_x" << previous_path_x << endl;
+						// cout << "previous_path_y" << previous_path_y << endl;
+						// cout << "car_yaw" << car_yaw << endl;
 
 
 						
 						//double s_incr = 0.5; // 0.5m/0.02s ~ 50MPH
 						const double max_tangent_accl = 1.0; //
-						const double v_incr = 0.018; // 0.018m/0.02s ~ 0.9ms/s, so accl < 1.0 m/s^2
-						for(int i=0; i<50; i++){
-							auto s_incr = v_incr * (i+1);
+						const double v_incr = 0.018; // 0.018m/0.02s ~ 0.9m/s/s, so accl < 1.0 m/s^2
+
+						int prev_pt_count = previous_path_x.size();
+						auto prev_s = car_s;
+						cout << "Number of previous points " << prev_pt_count << endl;
+						// if(prev_pt_count > 0){
+						// 	auto prev_x = previous_path_x[prev_pt_count-1];
+						// 	auto prev_y = previous_path_y[prev_pt_count-1]; 
+
+						// 	auto prev_frenet = getFrenet(car_x, car_y, car_yaw, map_waypoints_x, map_waypoints_y);
+						// 	prev_s = prev_frenet[0];
+						// }
+
+						for(int i=0; i<50-prev_pt_count; i++){
+							auto s_incr = 0.2;//v_incr * (i+1);
 							s_incr = s_incr > 0.5 ? 0.5 : s_incr;
-							auto s_next = car_s + (i+1)*s_incr;
+							auto s_next = prev_s + (i+1)*s_incr;
 							auto d_next = 6.0;
+
+							cout << "s_incr" << s_incr << endl;
 
 
 							vector<double> next_x_y  = getXY(s_next, 
