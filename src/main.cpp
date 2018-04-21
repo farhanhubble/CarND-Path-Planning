@@ -220,6 +220,21 @@ int main() {
         
         if (event == "telemetry") {
           // j[1] is the data JSON object
+					for(double s=0,d=6.0;s<6950; s+=0.2){
+								vector<double> xy  = getXY(s, 
+											d,
+											map_waypoints_s,
+											map_waypoints_x,
+											map_waypoints_y);
+								
+
+								vector<double> s_d = getFrenet(xy[0], xy[1], 0.2, map_waypoints_x, map_waypoints_y);
+
+								cout << s << " " << d << " " << xy[0] << " " << xy[1] << " " << s_d[0] << " " << s_d[1] << endl;
+
+					}
+
+					exit(1);
           
         	// Main car's localization Data
           	double car_x = j[1]["x"];
@@ -244,34 +259,62 @@ int main() {
           	vector<double> next_x_vals;
           	vector<double> next_y_vals;
 
-						// cout << "previous_path_x" << previous_path_x << endl;
-						// cout << "previous_path_y" << previous_path_y << endl;
-						// cout << "car_yaw" << car_yaw << endl;
-
-
-						
 						//double s_incr = 0.5; // 0.5m/0.02s ~ 50MPH
 						const double max_tangent_accl = 1.0; //
 						const double v_incr = 0.018; // 0.018m/0.02s ~ 0.9m/s/s, so accl < 1.0 m/s^2
 
 						int prev_pt_count = previous_path_x.size();
 						auto prev_s = car_s;
+						cout << endl;
 						cout << "Number of previous points " << prev_pt_count << endl;
-						// if(prev_pt_count > 0){
-						// 	auto prev_x = previous_path_x[prev_pt_count-1];
-						// 	auto prev_y = previous_path_y[prev_pt_count-1]; 
+#if 0		
+						for(int i=0; i< prev_pt_count; i++){
+							cout << previous_path_x[i] << " ";
+						}
+						cout << endl;
+						for(int i=0; i< prev_pt_count; i++){
+							cout << previous_path_y[i] << " ";
+						}
+						cout << endl;
 
-						// 	auto prev_frenet = getFrenet(car_x, car_y, car_yaw, map_waypoints_x, map_waypoints_y);
-						// 	prev_s = prev_frenet[0];
-						// }
+						for(int i=0; i<prev_pt_count; i++){
+							next_x_vals.push_back(previous_path_x[i]);
+							next_y_vals.push_back(previous_path_y[i]);
+						}
+#endif
+						if(prev_pt_count >= 2){
+							/* Last point in the trajectory. */
+							double prev_x = previous_path_x[prev_pt_count-1];
+							double prev_y = previous_path_y[prev_pt_count-1];
 
+							/* Penultimate point in the trajectory. */
+							double prev_prev_x = previous_path_x[prev_pt_count-2];
+							double prev_prev_y = previous_path_y[prev_pt_count-2];
+
+							double prev_yaw = atan2(prev_y-prev_prev_y , prev_x-prev_prev_x);
+							cout << "Calculated yaw "<< prev_yaw << endl;
+							
+							auto prev_frenet = getFrenet(prev_x, prev_y, prev_yaw, map_waypoints_x, map_waypoints_y);
+							prev_s = prev_frenet[0];
+							cout << "prev_s " << prev_s <<endl;
+							cout << "prev_d " << prev_frenet[1] << endl;
+
+							vector<double> prev_x_y  = getXY(prev_frenet[0], 
+											prev_frenet[1],
+											map_waypoints_s,
+											map_waypoints_x,
+											map_waypoints_y);
+
+							cout << "Conversion difference in X " << prev_x - prev_x_y[0] << endl;
+							cout << "Conversion difference in Y " << prev_y - prev_x_y[1] << endl;
+							
+						}
+					
 						for(int i=0; i<50-prev_pt_count; i++){
 							auto s_incr = 0.2;//v_incr * (i+1);
 							s_incr = s_incr > 0.5 ? 0.5 : s_incr;
 							auto s_next = prev_s + (i+1)*s_incr;
 							auto d_next = 6.0;
-
-							cout << "s_incr" << s_incr << endl;
 
 
 							vector<double> next_x_y  = getXY(s_next, 
@@ -279,11 +322,30 @@ int main() {
 											map_waypoints_s,
 											map_waypoints_x,
 											map_waypoints_y);
+
+							if(i==0 && prev_pt_count > 0){
+								double prev_x = previous_path_x[prev_pt_count-1];
+								if( abs(next_x_y[0] - prev_x) > 0.21 ){
+									cout << "Jumping from " << previous_path_x[prev_pt_count-1] << " to " << next_x_y[0]  << endl;
+								}
+							}
+
 							next_x_vals.push_back(next_x_y[0]);
 							next_y_vals.push_back(next_x_y[1]);
 						}
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
+						cout << "Number of new points " << next_x_vals.size() << endl;
+#if 0
+						for(int i=0; i< next_x_vals.size(); i++){
+							cout << next_x_vals[i] << " ";
+						}
+						cout << endl;
+						for(int i=0; i< next_y_vals.size(); i++){
+							cout << next_y_vals[i] << " ";
+						}
+						cout << endl;
+#endif
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
