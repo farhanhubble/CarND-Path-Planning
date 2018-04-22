@@ -337,7 +337,7 @@ int main() {
 
 						double x_start = 0; 	// In reference point's coordinate frame.
 						for(int i=0; i<params::TRAJECTORY_SIZE-remaining_trajectory_len; i++){
-							double x = x_start + i*params::X_HORIZON / horizon_steps;
+							double x = x_start + (i+1)*params::X_HORIZON / horizon_steps;
 							double y = sp(x);
 
 						/* Convert back to map coordinate frame.
@@ -350,7 +350,7 @@ int main() {
 							next_x_vals.push_back(x_map);
 							next_y_vals.push_back(y_map);
 
-							cout << x_map << " " << y_map << endl;
+							cout << remaining_trajectory_len << " " <<	x_map << " " << y_map << endl;
 
 						}
 
