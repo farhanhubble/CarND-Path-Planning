@@ -8,7 +8,7 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
-#include "trajectory.hpp"
+#include "controller.hpp"
 
 using namespace std;
 
@@ -54,7 +54,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-	Trajectory t(map_waypoints_x, map_waypoints_y, map_waypoints_s);
+	Controller t(map_waypoints_x, map_waypoints_y, map_waypoints_s);
 
   h.onMessage([&t, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -91,14 +91,16 @@ int main() {
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
+            cout << "Sensor fusion: " << sensor_fusion << endl;
 
           	json msgJson;
 
-						std::tuple<vector<double>, vector<double>> trajectory;
+            std::tuple<vector<double>, vector<double>> trajectory;
 
-						trajectory = t.generate(car_x, car_y, car_yaw, car_s,
-																		previous_path_x, previous_path_y);
-
+            params::CAR_STATE car_state = {car_x, car_y, car_yaw, car_s, car_d, car_speed};
+            trajectory = t.generate_trajectory(car_state,
+                                               previous_path_x, 
+                                               previous_path_y);
 
           	msgJson["next_x"] = std::get<0>(trajectory);
           	msgJson["next_y"] = std::get<1>(trajectory);

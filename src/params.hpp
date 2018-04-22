@@ -8,5 +8,25 @@ const double X_HORIZON = 30.0;	     // Trajectory planning horizon.
 
 const double REF_VELOCITY = 49.0 * 0.44704; // 49 MPH converted to m/s.
 const int TRAJECTORY_SIZE = 50;      // Number of points in the trajectory.
+
+enum ACTION_STATES{
+    HALT = 0,
+    KEEP_LANE ,
+    CHANGE_LANE_LEFT,
+    CHANGE_LANE_RIGHT,
+};
+
+
+typedef struct {
+    double x;
+    double y;
+    double yaw;
+    double s;
+    double d;
+    double speed;
+
+} CAR_STATE;
+
+
 }
 #endif //__PARAMS_HPP__

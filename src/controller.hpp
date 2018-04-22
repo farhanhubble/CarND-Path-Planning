@@ -1,5 +1,5 @@
-#ifndef __TRAJECTORY_HPP__
-#define __TRAJECTORY_HPP__
+#ifndef __CONTROLLER_HPP__
+#define __CONTROLLER_HPP__
 
 #include <vector>
 
@@ -9,7 +9,7 @@
 
 using namespace std;
 
-class Trajectory {
+class Controller {
 
 private:
     vector<double> map_waypoints_x;
@@ -17,22 +17,19 @@ private:
     vector<double> map_waypoints_s;
 
 public:
-    Trajectory(vector<double> map_waypoints_x,
+    Controller(vector<double> map_waypoints_x,
                 vector<double> map_waypoints_y,
                 vector<double> map_waypoints_s);
  
     std::tuple<vector<double>, vector<double>> 
-    generate(double car_x, 
-            double car_y, 
-            double car_yaw,
-            double car_s,
-            vector<double>previous_path_x, 
-            vector<double>previous_path_y);
+    generate_trajectory(const params::CAR_STATE &car_state,
+						vector<double>previous_path_x, 
+						vector<double>previous_path_y);
 
 };
 
 
-Trajectory :: Trajectory(vector<double> map_waypoints_x,
+Controller :: Controller(vector<double> map_waypoints_x,
                         vector<double> map_waypoints_y,
                         vector<double> map_waypoints_s) {
 
@@ -43,12 +40,9 @@ Trajectory :: Trajectory(vector<double> map_waypoints_x,
                         
                         
 std::tuple<vector<double>, vector<double>> 
-Trajectory :: generate(double car_x, 
-                        double car_y, 
-                        double car_yaw,
-                        double car_s,
-                        vector<double>previous_path_x, 
-                        vector<double>previous_path_y) {
+Controller :: generate_trajectory(const params::CAR_STATE &car_state,
+								  vector<double>previous_path_x, 
+								  vector<double>previous_path_y) {
 
 	int remaining_trajectory_len = previous_path_x.size();
 
@@ -69,10 +63,10 @@ Trajectory :: generate(double car_x,
 	double ref_yaw = 0;
 
 	if(remaining_trajectory_len < 2){
-		ref_x = car_x;
-		ref_y = car_y;
+		ref_x = car_state.x;
+		ref_y = car_state.y;
 
-		ref_yaw = deg2rad(car_yaw);
+		ref_yaw = deg2rad(car_state.yaw);
 
 		ref_x_prev = ref_x - cos(ref_yaw);
 		ref_y_prev = ref_y - sin(ref_yaw);
@@ -97,8 +91,8 @@ Trajectory :: generate(double car_x,
 		*/
 	int nb_additional_anchors = params::NB_ANCHOR_PTS-anchor_xs.size(); 
 	for(int i=0; i<nb_additional_anchors; i++){
-		vector<double> x_y = getXY(car_s + (i+1)*params::ANCHOR_S_INCR,
-															6.0,
+		vector<double> x_y = getXY(car_state.s + (i+1)*params::ANCHOR_S_INCR,
+															car_state.d,
 															map_waypoints_s,
 															map_waypoints_x,
 															map_waypoints_y);
@@ -165,4 +159,4 @@ Trajectory :: generate(double car_x,
 
 }
 
-#endif //__TRAJECTORY_HPP__
+#endif //__CONTROLLER_HPP__
