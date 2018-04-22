@@ -350,7 +350,7 @@ int main() {
 							next_x_vals.push_back(x_map);
 							next_y_vals.push_back(y_map);
 
-							cout << remaining_trajectory_len << " " <<	x_map << " " << y_map << endl;
+							cout  <<	x_map << " " << y_map << endl;
 
 						}
 
