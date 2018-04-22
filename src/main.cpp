@@ -8,6 +8,8 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
+#include "params.hpp"
+#include "spline.h"
 
 using namespace std;
 
@@ -220,22 +222,6 @@ int main() {
         
         if (event == "telemetry") {
           // j[1] is the data JSON object
-					for(double s=0,d=6.0;s<6950; s+=0.2){
-								vector<double> xy  = getXY(s, 
-											d,
-											map_waypoints_s,
-											map_waypoints_x,
-											map_waypoints_y);
-								
-
-								vector<double> s_d = getFrenet(xy[0], xy[1], 0.2, map_waypoints_x, map_waypoints_y);
-
-								cout << s << " " << d << " " << xy[0] << " " << xy[1] << " " << s_d[0] << " " << s_d[1] << endl;
-
-					}
-
-					exit(1);
-          
         	// Main car's localization Data
           	double car_x = j[1]["x"];
           	double car_y = j[1]["y"];
@@ -256,101 +242,122 @@ int main() {
 
           	json msgJson;
 
-          	vector<double> next_x_vals;
+						int remaining_trajectory_len = previous_path_x.size();
+						//cout << "remaining_trajectory_len " << remaining_trajectory_len << endl;
+
+						vector<double> anchor_xs;
+						vector<double> anchor_ys;
+						
+						/* Calculate first 2 anchor points. To generate a smooth trajectory,
+						 * we use the last 2 points from the previous trajectory or, if there 
+						 * aren't enough points in the previous trajectory, use the car's
+						 * current coordinates as one of the points and a point tangential to 
+						 * car's current trajectory, slightly behind this point as the other
+						 * anchor point.
+						 */
+						double ref_x = 0;
+						double ref_y = 0;
+						double ref_x_prev = 0;
+						double ref_y_prev = 0;
+						double ref_yaw = 0;
+
+						if(remaining_trajectory_len < 2){
+							ref_x = car_x;
+							ref_y = car_y;
+
+							ref_yaw = deg2rad(car_yaw);
+	
+							ref_x_prev = ref_x - cos(ref_yaw);
+							ref_y_prev = ref_y - sin(ref_yaw);
+						} 
+						else{
+							ref_x = previous_path_x[remaining_trajectory_len-1];
+							ref_y = previous_path_y[remaining_trajectory_len-1];
+
+							ref_x_prev = previous_path_x[remaining_trajectory_len-2];
+							ref_y_prev = previous_path_y[remaining_trajectory_len-2];
+
+							ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
+						}
+
+						anchor_xs.push_back(ref_x_prev);
+						anchor_xs.push_back(ref_x);
+						anchor_ys.push_back(ref_y_prev);
+						anchor_ys.push_back(ref_y);
+
+						/* Add more anchor points after the first two points.
+						 * These points are equi-spaced in Frenet s coordinates.
+						 */
+						int nb_additional_anchors = params::NB_ANCHOR_PTS-anchor_xs.size(); 
+						for(int i=0; i<nb_additional_anchors; i++){
+							vector<double> x_y = getXY(car_s + (i+1)*params::ANCHOR_S_INCR,
+																				6.0,
+																				map_waypoints_s,
+																				map_waypoints_x,
+																				map_waypoints_y);
+							anchor_xs.push_back(x_y[0]);
+							anchor_ys.push_back(x_y[1]);
+						}
+
+
+						/* Convert anchor point coordinates to an origin at (x_ref,y_ref) and rotate
+						 * by yaw_ref.
+						 */
+						for(int i=0; i<anchor_xs.size(); i++){
+							double delta_x = anchor_xs[i] - ref_x;
+							double delta_y = anchor_ys[i] - ref_y;
+
+							anchor_xs[i] = delta_x * cos(ref_yaw) + delta_y * sin(ref_yaw);
+							anchor_ys[i] = -delta_x * sin(ref_yaw) + delta_y * cos(ref_yaw);
+						}
+
+
+						/* Fit a spline to the anchor points. */
+						tk::spline sp;
+						sp.set_points(anchor_xs, anchor_ys);
+
+						
+						/* New trajectory. */
+						vector<double> next_x_vals;
           	vector<double> next_y_vals;
 
-						//double s_incr = 0.5; // 0.5m/0.02s ~ 50MPH
-						const double max_tangent_accl = 1.0; //
-						const double v_incr = 0.018; // 0.018m/0.02s ~ 0.9m/s/s, so accl < 1.0 m/s^2
-
-						int prev_pt_count = previous_path_x.size();
-						auto prev_s = car_s;
-						cout << endl;
-						cout << "Number of previous points " << prev_pt_count << endl;
-#if 0		
-						for(int i=0; i< prev_pt_count; i++){
-							cout << previous_path_x[i] << " ";
-						}
-						cout << endl;
-						for(int i=0; i< prev_pt_count; i++){
-							cout << previous_path_y[i] << " ";
-						}
-						cout << endl;
-
-						for(int i=0; i<prev_pt_count; i++){
+						/* Copy over untraversed points from previous trajectory to new 
+						 * trajectory.
+						 */
+						for(int i=0; i<remaining_trajectory_len; i++){
 							next_x_vals.push_back(previous_path_x[i]);
 							next_y_vals.push_back(previous_path_y[i]);
 						}
-#endif
-						if(prev_pt_count >= 2){
-							/* Last point in the trajectory. */
-							double prev_x = previous_path_x[prev_pt_count-1];
-							double prev_y = previous_path_y[prev_pt_count-1];
 
-							/* Penultimate point in the trajectory. */
-							double prev_prev_x = previous_path_x[prev_pt_count-2];
-							double prev_prev_y = previous_path_y[prev_pt_count-2];
+						/* Populate new trajectory points. */
+						double y_horizon = sp(params::X_HORIZON);
+						double horizon_distance = sqrt(params::X_HORIZON*params::X_HORIZON + y_horizon*y_horizon);
+						
+						double horizon_steps = horizon_distance / (params::SIMULATION_STEP * params::REF_VELOCITY);
 
-							double prev_yaw = atan2(prev_y-prev_prev_y , prev_x-prev_prev_x);
-							cout << "Calculated yaw "<< prev_yaw << endl;
-							
-							auto prev_frenet = getFrenet(prev_x, prev_y, prev_yaw, map_waypoints_x, map_waypoints_y);
-							prev_s = prev_frenet[0];
-							cout << "prev_s " << prev_s <<endl;
-							cout << "prev_d " << prev_frenet[1] << endl;
+						double x_start = 0; 	// In reference point's coordinate frame.
+						for(int i=0; i<params::TRAJECTORY_SIZE-remaining_trajectory_len; i++){
+							double x = x_start + i*params::X_HORIZON / horizon_steps;
+							double y = sp(x);
 
-							vector<double> prev_x_y  = getXY(prev_frenet[0], 
-											prev_frenet[1],
-											map_waypoints_s,
-											map_waypoints_x,
-											map_waypoints_y);
+						/* Convert back to map coordinate frame.
+						 * rotate by yaw_ref, then translate by (-x_ref, -y_ref)
+						 */
 
-							cout << "Conversion difference in X " << prev_x - prev_x_y[0] << endl;
-							cout << "Conversion difference in Y " << prev_y - prev_x_y[1] << endl;
-							
-						}
-					
-						for(int i=0; i<50-prev_pt_count; i++){
-							auto s_incr = 0.2;//v_incr * (i+1);
-							s_incr = s_incr > 0.5 ? 0.5 : s_incr;
-							auto s_next = prev_s + (i+1)*s_incr;
-							auto d_next = 6.0;
+							double x_map = x * cos(ref_yaw) - y * sin(ref_yaw) + ref_x; 
+							double y_map = x * sin(ref_yaw) + y * cos(ref_yaw) + ref_y;
 
+							next_x_vals.push_back(x_map);
+							next_y_vals.push_back(y_map);
 
-							vector<double> next_x_y  = getXY(s_next, 
-											d_next,
-											map_waypoints_s,
-											map_waypoints_x,
-											map_waypoints_y);
+							cout << x_map << " " << y_map << endl;
 
-							if(i==0 && prev_pt_count > 0){
-								double prev_x = previous_path_x[prev_pt_count-1];
-								if( abs(next_x_y[0] - prev_x) > 0.21 ){
-									cout << "Jumping from " << previous_path_x[prev_pt_count-1] << " to " << next_x_y[0]  << endl;
-								}
-							}
-
-							next_x_vals.push_back(next_x_y[0]);
-							next_y_vals.push_back(next_x_y[1]);
 						}
 
-          	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-						cout << "Number of new points " << next_x_vals.size() << endl;
-#if 0
-						for(int i=0; i< next_x_vals.size(); i++){
-							cout << next_x_vals[i] << " ";
-						}
-						cout << endl;
-						for(int i=0; i< next_y_vals.size(); i++){
-							cout << next_y_vals[i] << " ";
-						}
-						cout << endl;
-#endif
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-
           	//this_thread::sleep_for(chrono::milliseconds(1000));
           	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           
