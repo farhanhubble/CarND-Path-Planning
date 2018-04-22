@@ -23,6 +23,7 @@ public:
  
     std::tuple<vector<double>, vector<double>> 
     generate_trajectory(const params::CAR_STATE &car_state,
+						const params::WORLD_STATE &world_state,
 						vector<double>previous_path_x, 
 						vector<double>previous_path_y);
 
@@ -41,6 +42,7 @@ Controller :: Controller(vector<double> map_waypoints_x,
                         
 std::tuple<vector<double>, vector<double>> 
 Controller :: generate_trajectory(const params::CAR_STATE &car_state,
+								  const params::WORLD_STATE &world_state,
 								  vector<double>previous_path_x, 
 								  vector<double>previous_path_y) {
 
@@ -50,12 +52,12 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 	vector<double> anchor_ys;
 
 	/* Calculate first 2 anchor points. To generate a smooth trajectory,
-		* we use the last 2 points from the previous trajectory or, if there 
-		* aren't enough points in the previous trajectory, use the car's
-		* current coordinates as one of the points and a point tangential to 
-		* car's current trajectory, slightly behind this point as the other
-		* anchor point.
-		*/
+	* we use the last 2 points from the previous trajectory or, if there 
+	* aren't enough points in the previous trajectory, use the car's
+	* current coordinates as one of the points and a point tangential to 
+	* car's current trajectory, slightly behind this point as the other
+	* anchor point.
+	*/
 	double ref_x = 0;
 	double ref_y = 0;
 	double ref_x_prev = 0;

@@ -97,8 +97,10 @@ int main() {
 
             std::tuple<vector<double>, vector<double>> trajectory;
 
-            params::CAR_STATE car_state = {car_x, car_y, car_yaw, car_s, car_d, car_speed};
+            params::CAR_STATE car_state = {params::EGO_CAR_ID, car_x, car_y, car_yaw, car_s, car_d, car_speed};
+            params::WORLD_STATE world_state = to_world_state(sensor_fusion);
             trajectory = t.generate_trajectory(car_state,
+                                               world_state,
                                                previous_path_x, 
                                                previous_path_y);
 

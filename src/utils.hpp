@@ -5,6 +5,7 @@
 #include <math.h>
 #include <string>
 #include "json.hpp"
+#include "params.hpp"
 
 using namespace std;
 
@@ -160,6 +161,29 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 	return {x,y};
 
+}
+
+params::WORLD_STATE to_world_state(vector<vector<double>> sensor_info) {
+	params::WORLD_STATE world_state;
+	for(int i=0; i<sensor_info.size(); i++){
+		vector<double> car_info = sensor_info[i];
+		
+		int id = (int)car_info[0];
+		double x = car_info[1];
+		double y = car_info[2];
+		double v_x = car_info[3];
+		double v_y = car_info[4];
+		double s = car_info[5];
+		double d = car_info[6];
+
+		double yaw = rad2deg(atan2(v_y,v_x));
+		double speed = v_x * v_x + v_y * v_y;
+		params::CAR_STATE car_state = {id, x, y, yaw, s, d, speed};
+
+		world_state.cars_info.push_back(car_state);
+	}
+
+	return world_state;
 }
 
 
