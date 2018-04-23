@@ -42,7 +42,7 @@ Controller :: Controller(vector<double> map_waypoints_x,
                         vector<double> map_waypoints_s) {
 
 	this->acceleration = params::DEFAULT_THROTTLE;
-	this->speed = 0;
+	this->speed = params::REF_VELOCITY;
     this->map_waypoints_x = map_waypoints_x;
     this->map_waypoints_y = map_waypoints_y;
     this->map_waypoints_s = map_waypoints_s;
@@ -117,18 +117,22 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 	/* Convert anchor point coordinates to an origin at (x_ref,y_ref) and rotate
 		* by yaw_ref.
 		*/
-	for(int i=0; i<anchor_xs.size(); i++){
-		double delta_x = anchor_xs[i] - ref_x;
-		double delta_y = anchor_ys[i] - ref_y;
-
-		anchor_xs[i] = delta_x * cos(ref_yaw) + delta_y * sin(ref_yaw);
-		anchor_ys[i] = -delta_x * sin(ref_yaw) + delta_y * cos(ref_yaw);
-	}
-
+	std::pair<vector<double>, vector<double>> transformed_anchors =
+		transform_coordinates(std::pair<vector<double>, vector<double>>(anchor_xs,anchor_ys), 
+							  std::pair<double, double>(ref_x,ref_y), 
+							  ref_yaw);
+	
+	anchor_xs = std::get<0>(transformed_anchors);
+	anchor_ys = std::get<1>(transformed_anchors);
 
 	/* Fit a spline to the anchor points. */
 	tk::spline sp;
+	
+	print_coordinates(anchor_xs, anchor_ys);
 	sp.set_points(anchor_xs, anchor_ys);
+	
+	
+	
 
 
 	/* New trajectory. */
@@ -150,23 +154,30 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 	double horizon_steps = horizon_distance / (params::SIMULATION_STEP * this->speed);
 
 	double x_start = 0; 	// In reference point's coordinate frame.
+	vector<double> trajectory_xs;
+	vector<double> trajectory_ys;
+
 	for(int i=0; i<params::TRAJECTORY_SIZE-remaining_trajectory_len; i++){
 		double x = x_start + (i+1)*params::X_HORIZON / horizon_steps;
 		double y = sp(x);
 
-	/* Convert back to map coordinate frame.
-		* rotate by yaw_ref, then translate by (-x_ref, -y_ref)
-		*/
-
-		double x_map = x * cos(ref_yaw) - y * sin(ref_yaw) + ref_x; 
-		double y_map = x * sin(ref_yaw) + y * cos(ref_yaw) + ref_y;
-
-		next_x_vals.push_back(x_map);
-		next_y_vals.push_back(y_map);
-
-		cout  <<	x_map << " " << y_map << endl;
-
+		trajectory_xs.push_back(x);
+		trajectory_ys.push_back(y);
 	}
+
+	/* Transform new trajectory points to map's coordinates. */
+	std::pair<vector<double>, vector<double>> transformed_trajectory =
+		inverse_transform_coordinates(std::pair<vector<double>,vector<double>>(trajectory_xs, trajectory_ys),
+												  std::pair<double, double>(ref_x,ref_y),
+												  ref_yaw);
+
+	vector<double> transformed_trajectory_xs = std::get<0>(transformed_trajectory);
+	vector<double> transformed_trajectory_ys = std::get<1>(transformed_trajectory);
+
+	/* Append new trajectory points. */	
+	//print_coordinates(transformed_trajectory_xs, transformed_trajectory_xs);
+	next_x_vals.insert(next_x_vals.end(), transformed_trajectory_xs.begin(), transformed_trajectory_xs.end());
+	next_y_vals.insert(next_y_vals.end(), transformed_trajectory_ys.begin(), transformed_trajectory_ys.end());
 
 	return std::tuple<vector<double>,vector<double>>(next_x_vals, next_y_vals);
 

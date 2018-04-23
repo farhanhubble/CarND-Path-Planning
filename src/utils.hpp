@@ -187,4 +187,79 @@ params::WORLD_STATE to_world_state(vector<vector<double>> sensor_info) {
 }
 
 
+std::pair<vector<double>, vector<double>> 
+translate_coordinates(std::pair<vector<double>, vector<double>> points, 
+					 std::pair<double,double> pivot) {
+	vector<double> xs = std::get<0>(points);
+	vector<double> ys = std::get<1>(points);
+
+	double pivot_x = std::get<0>(pivot);
+	double pivot_y = std::get<1>(pivot);
+
+	int nb_points = xs.size();
+	
+	vector<double> out_xs(nb_points);
+	vector<double> out_ys(nb_points);
+	
+	for(int i=0; i<nb_points; i++){
+		out_xs[i] = xs[i] - pivot_x;
+		out_ys[i] = ys[i] - pivot_y;
+	}
+
+	return std::pair<vector<double>, vector<double>> (out_xs, out_ys); 
+}
+
+
+
+std::pair<vector<double>, vector<double>> 
+rotate_coordinates(std::pair<vector<double>, vector<double>> points, double theta) {
+	vector<double> xs = std::get<0>(points);
+	vector<double> ys = std::get<1>(points);
+
+	int nb_points = xs.size();
+	
+	vector<double> out_xs(nb_points);
+	vector<double> out_ys(nb_points);
+	
+	for(int i=0; i<nb_points; i++){
+		out_xs[i] =  xs[i] * cos(theta) + ys[i] * sin(theta);
+		out_ys[i] = -xs[i] * sin(theta) + ys[i] * cos(theta);
+	}
+
+	return std::pair<vector<double>, vector<double>> (out_xs, out_ys); 
+}
+
+
+
+std::pair<vector<double>, vector<double>> 
+transform_coordinates(std::pair<vector<double>, vector<double>> points,
+					  std::pair<double,double> pivot,
+					  double theta) {
+
+	auto result = translate_coordinates(points, pivot);
+	return rotate_coordinates(result, theta);
+}
+
+
+
+std::pair<vector<double>, vector<double>> 
+inverse_transform_coordinates(std::pair<vector<double>, vector<double>> points,
+					  		  std::pair<double,double> pivot,
+					  		  double theta) {
+
+	auto result = rotate_coordinates(points, -theta);
+	auto negated_pivot = std::pair<double, double>(-1*std::get<0>(pivot), -1*std::get<1>(pivot));
+	return translate_coordinates(result, negated_pivot);
+}
+
+
+
+void print_coordinates(vector<double> xs, vector<double> ys, char separator='\n'){
+	assert(xs.size() == ys.size());
+	int nb_pts = xs.size();
+
+	for(int i=0; i<nb_pts; i++){
+		cout << xs[i] << " " << ys[i] << separator;
+	}
+}
 #endif //__UTILS_HPP__
