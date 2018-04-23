@@ -17,6 +17,8 @@ const int TRAJECTORY_SIZE = 50;      // Number of points in the trajectory.
 
 const int EGO_CAR_ID = -1;          // Own car ID.
 
+const double DEFAULT_THROTTLE = 5.0 * SIMULATION_STEP; // Default acceleration/deceleration.
+
 enum ACTION_STATES{
     HALT = 0,
     KEEP_LANE ,

@@ -12,9 +12,14 @@ using namespace std;
 class Controller {
 
 private:
+	double acceleration;
+	double speed;
     vector<double> map_waypoints_x;
     vector<double> map_waypoints_y;
     vector<double> map_waypoints_s;
+
+	void get_target_params(const params::CAR_STATE &car_state,
+						   const params::WORLD_STATE &world_state);
 
 public:
     Controller(vector<double> map_waypoints_x,
@@ -27,6 +32,8 @@ public:
 						vector<double>previous_path_x, 
 						vector<double>previous_path_y);
 
+	
+
 };
 
 
@@ -34,6 +41,8 @@ Controller :: Controller(vector<double> map_waypoints_x,
                         vector<double> map_waypoints_y,
                         vector<double> map_waypoints_s) {
 
+	this->acceleration = params::DEFAULT_THROTTLE;
+	this->speed = 0;
     this->map_waypoints_x = map_waypoints_x;
     this->map_waypoints_y = map_waypoints_y;
     this->map_waypoints_s = map_waypoints_s;
@@ -47,6 +56,8 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 								  vector<double>previous_path_y) {
 
 	int remaining_trajectory_len = previous_path_x.size();
+
+	get_target_params(car_state, world_state);
 
 	vector<double> anchor_xs;
 	vector<double> anchor_ys;
@@ -136,7 +147,7 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 	double y_horizon = sp(params::X_HORIZON);
 	double horizon_distance = sqrt(params::X_HORIZON*params::X_HORIZON + y_horizon*y_horizon);
 
-	double horizon_steps = horizon_distance / (params::SIMULATION_STEP * params::REF_VELOCITY);
+	double horizon_steps = horizon_distance / (params::SIMULATION_STEP * this->speed);
 
 	double x_start = 0; 	// In reference point's coordinate frame.
 	for(int i=0; i<params::TRAJECTORY_SIZE-remaining_trajectory_len; i++){
@@ -159,6 +170,38 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 
 	return std::tuple<vector<double>,vector<double>>(next_x_vals, next_y_vals);
 
+}
+
+
+void Controller::get_target_params(const params::CAR_STATE &car_state,
+					   const params::WORLD_STATE &world_state) {
+
+	bool car_ahead = false;
+	
+	for(int i=0; i<world_state.cars_info.size(); i++){
+		params::CAR_STATE other_car_state = world_state.cars_info[i];
+		cout << other_car_state.s << " " << other_car_state.d << endl;
+		
+		int my_lane = ((int)ceil(abs(car_state.d))) % 4;
+		int other_lane =  ((int)ceil(abs(other_car_state.d))) % 4;
+		if(other_lane == my_lane){
+			if(abs(other_car_state.s - car_state.s) < 10 ) {
+				car_ahead = true;
+				cout << "Impending Collision with car " << other_car_state.id << endl;
+				this->speed -= this->acceleration;
+				if(this->speed < 0){
+					this->speed = 0;
+				}
+			} 
+		}
+	}
+
+	if(car_ahead == false){
+		this->speed += this->acceleration;
+		if(this->speed > params::REF_VELOCITY){
+			this->speed = params::REF_VELOCITY;
+		}
+	}
 }
 
 #endif //__CONTROLLER_HPP__
