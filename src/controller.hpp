@@ -190,14 +190,17 @@ void Controller::get_target_params(const params::CAR_STATE &car_state,
 	
 	for(int i=0; i<world_state.cars_info.size(); i++){
 		params::CAR_STATE other_car_state = world_state.cars_info[i];
-		int my_lane = ((int)ceil(car_state.d)) % 4 ;
-		int other_lane =  ((int)ceil(other_car_state.d)) % 4;
+		int my_lane = to_lane(car_state.d) ;
+		int other_lane =  to_lane(other_car_state.d);
 		if(other_lane == my_lane){
-			if(abs(other_car_state.s - car_state.s) < 10 ) {
+		
+			if(other_car_state.s > car_state.s && other_car_state.s - car_state.s  < 30 ) {
+				cout << "My d:" << car_state.d << " my lane " << my_lane << ", their d:" << other_car_state.d << " their lane " << other_lane << endl;
+				cout << "My s:" << car_state.s << " their s:" << other_car_state.s <<endl<<endl;
 				car_ahead = true;
 				//cout << "Impending Collision with car " << other_car_state.id << endl;
 				//cout << "My d:" << car_state.d << " their d:" << other_car_state.d << endl;
-				cout << "Car "<< other_car_state.id <<" at s " << other_car_state.s << ",d " << other_car_state.d << endl;
+				//cout << "Car "<< other_car_state.id <<" at s " << other_car_state.s << ",d " << other_car_state.d << endl;
 				this->speed -= this->acceleration;
 				if(this->speed < 0){
 					this->speed = 0;

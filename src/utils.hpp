@@ -267,4 +267,8 @@ void print_coordinates(vector<double> xs, vector<double> ys, char separator='\n'
 double center_of(int lane){
 	return 4*lane+2;
 }
+
+int to_lane(double d){
+	return (int)d/4;
+}
 #endif //__UTILS_HPP__
