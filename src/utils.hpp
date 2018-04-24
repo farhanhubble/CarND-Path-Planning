@@ -262,4 +262,9 @@ void print_coordinates(vector<double> xs, vector<double> ys, char separator='\n'
 		cout << xs[i] << " " << ys[i] << separator;
 	}
 }
+
+
+double center_of(int lane){
+	return 4*lane+2;
+}
 #endif //__UTILS_HPP__
