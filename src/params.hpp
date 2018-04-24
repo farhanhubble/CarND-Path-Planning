@@ -19,6 +19,7 @@ const int EGO_CAR_ID = -1;          // Own car ID.
 
 const double DEFAULT_THROTTLE = 5.0 * SIMULATION_STEP; // Default acceleration/deceleration.
 const int DEFAULT_LANE = 1;
+const double MIN_SAFE_DISTANCE = 30.0;
 
 enum ACTION_STATES{
     HALT = 0,

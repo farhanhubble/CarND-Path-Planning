@@ -19,21 +19,46 @@ private:
     vector<double> map_waypoints_y;
     vector<double> map_waypoints_s;
 
-	void get_target_params(const params::CAR_STATE &car_state,
+	
+	inline void brake(){
+		this->speed -= this->acceleration;
+		if(this->speed < 0){
+			this->speed = 0;
+		}
+	}
+
+    std::tuple<double, double, double> 
+	get_reference_and_anchors_points(const params::CAR_STATE &car_state,
+									vector<double> &previous_path_x,
+									vector<double> &previous_path_y, 
+									vector<double> &anchor_xs,
+									vector<double> &anchor_ys);
+	
+
+	void set_target_params(const params::CAR_STATE &car_state,
 						   const params::WORLD_STATE &world_state);
+
+
+	inline void throttle(){
+		this->speed += this->acceleration;
+		if(this->speed > params::REF_VELOCITY){
+			this->speed = params::REF_VELOCITY;
+		}
+	}
+
+
 
 public:
     Controller(vector<double> map_waypoints_x,
                 vector<double> map_waypoints_y,
                 vector<double> map_waypoints_s);
  
-    std::tuple<vector<double>, vector<double>> 
+    
+	std::tuple<vector<double>, vector<double>> 
     generate_trajectory(const params::CAR_STATE &car_state,
 						const params::WORLD_STATE &world_state,
 						vector<double>previous_path_x, 
 						vector<double>previous_path_y);
-
-	
 
 };
 
@@ -50,34 +75,24 @@ Controller :: Controller(vector<double> map_waypoints_x,
     this->map_waypoints_y = map_waypoints_y;
     this->map_waypoints_s = map_waypoints_s;
 }
-                        
-                        
 
-std::tuple<vector<double>, vector<double>> 
-Controller :: generate_trajectory(const params::CAR_STATE &car_state,
-								  const params::WORLD_STATE &world_state,
-								  vector<double>previous_path_x, 
-								  vector<double>previous_path_y) {
 
-	int remaining_trajectory_len = previous_path_x.size();
 
-	get_target_params(car_state, world_state);
+std::tuple<double,double, double> 
+Controller::get_reference_and_anchors_points(const params::CAR_STATE &car_state,
+								vector<double> &previous_path_x,
+								vector<double> &previous_path_y, 
+								vector<double> &anchor_xs,
+								vector<double> &anchor_ys){
 
-	vector<double> anchor_xs;
-	vector<double> anchor_ys;
-
-	/* Calculate first 2 anchor points. To generate a smooth trajectory,
-	* we use the last 2 points from the previous trajectory or, if there 
-	* aren't enough points in the previous trajectory, use the car's
-	* current coordinates as one of the points and a point tangential to 
-	* car's current trajectory, slightly behind this point as the other
-	* anchor point.
-	*/
+	
 	double ref_x = 0;
 	double ref_y = 0;
 	double ref_x_prev = 0;
 	double ref_y_prev = 0;
 	double ref_yaw = 0;
+
+	int remaining_trajectory_len = previous_path_x.size();
 
 	if(remaining_trajectory_len < 2){
 		ref_x = car_state.x;
@@ -103,24 +118,52 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 	anchor_ys.push_back(ref_y_prev);
 	anchor_ys.push_back(ref_y);
 
+
 	/* Add more anchor points after the first two points.
-		* These points are equi-spaced in Frenet s coordinates.
-		*/
+	* These points are equi-spaced in Frenet s coordinates.
+	*/
 	int nb_additional_anchors = params::NB_ANCHOR_PTS-anchor_xs.size(); 
 	for(int i=0; i<nb_additional_anchors; i++){
 		vector<double> x_y = getXY(car_state.s + (i+1)*params::ANCHOR_S_INCR,
 															center_of(this->lane),
-															map_waypoints_s,
-															map_waypoints_x,
-															map_waypoints_y);
+															this->map_waypoints_s,
+															this->map_waypoints_x,
+															this->map_waypoints_y);
 		anchor_xs.push_back(x_y[0]);
 		anchor_ys.push_back(x_y[1]);
 	}
 
+	return std::tuple<double, double, double>(ref_x, ref_y, ref_yaw);
+}
+                        
+                        
 
-	/* Convert anchor point coordinates to an origin at (x_ref,y_ref) and rotate
-		* by yaw_ref.
-		*/
+std::tuple<vector<double>, vector<double>> 
+Controller :: generate_trajectory(const params::CAR_STATE &car_state,
+								  const params::WORLD_STATE &world_state,
+								  vector<double>previous_path_x, 
+								  vector<double>previous_path_y) {
+
+	int remaining_trajectory_len = previous_path_x.size();
+
+	set_target_params(car_state, world_state);
+
+	vector<double> anchor_xs;
+	vector<double> anchor_ys;
+
+	std::tuple<double,double,double> ref_x_y_yaw = 
+		get_reference_and_anchors_points(car_state, 
+										previous_path_x, 
+										previous_path_y,
+										anchor_xs,
+										anchor_ys);
+
+	double ref_x = std::get<0>(ref_x_y_yaw);
+	double ref_y = std::get<1>(ref_x_y_yaw);
+	double ref_yaw = std::get<2>(ref_x_y_yaw);
+	
+	
+	/* Transform anchor point coordinates to  (x_ref,y_ref,@yaw_ref). */
 	std::pair<vector<double>, vector<double>> transformed_anchors =
 		transform_coordinates(std::pair<vector<double>, vector<double>>(anchor_xs,anchor_ys), 
 							  std::pair<double, double>(ref_x,ref_y), 
@@ -128,6 +171,7 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 	
 	anchor_xs = std::get<0>(transformed_anchors);
 	anchor_ys = std::get<1>(transformed_anchors);
+
 
 	/* Fit a spline to the anchor points. */
 	tk::spline sp;
@@ -183,7 +227,7 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 }
 
 
-void Controller::get_target_params(const params::CAR_STATE &car_state,
+void Controller::set_target_params(const params::CAR_STATE &car_state,
 					   const params::WORLD_STATE &world_state) {
 
 	bool car_ahead = false;
@@ -192,28 +236,20 @@ void Controller::get_target_params(const params::CAR_STATE &car_state,
 		params::CAR_STATE other_car_state = world_state.cars_info[i];
 		int my_lane = to_lane(car_state.d) ;
 		int other_lane =  to_lane(other_car_state.d);
-		if(other_lane == my_lane){
 		
-			if(other_car_state.s > car_state.s && other_car_state.s - car_state.s  < 30 ) {
+		if(other_lane == my_lane){
+			double separation = delta_s(car_state.s, other_car_state.s);
+			if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
 				cout << "My d:" << car_state.d << " my lane " << my_lane << ", their d:" << other_car_state.d << " their lane " << other_lane << endl;
 				cout << "My s:" << car_state.s << " their s:" << other_car_state.s <<endl<<endl;
 				car_ahead = true;
-				//cout << "Impending Collision with car " << other_car_state.id << endl;
-				//cout << "My d:" << car_state.d << " their d:" << other_car_state.d << endl;
-				//cout << "Car "<< other_car_state.id <<" at s " << other_car_state.s << ",d " << other_car_state.d << endl;
-				this->speed -= this->acceleration;
-				if(this->speed < 0){
-					this->speed = 0;
-				}
+				brake();
 			} 
 		}
 	}
 
 	if(car_ahead == false){
-		this->speed += this->acceleration;
-		if(this->speed > params::REF_VELOCITY){
-			this->speed = params::REF_VELOCITY;
-		}
+		throttle();
 	}
 }
 
