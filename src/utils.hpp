@@ -277,7 +277,16 @@ int to_lane(double d){
 
 
 
-bool delta_s(double my_s, double his_s){
+double delta_s(double my_s, double his_s){
 	return his_s - my_s ; 
+}
+
+
+
+void sort_by_abs_distance(const params::CAR_STATE &ego_car_state, vector<params::CAR_STATE> &lane_traffic){
+	std::sort(lane_traffic.begin(), lane_traffic.end(), [&ego_car_state](const params::CAR_STATE & car_a, const params::CAR_STATE & car_b) -> bool
+	{ 
+		return abs(delta_s(ego_car_state.s,car_a.s)) > abs(delta_s(ego_car_state.s, car_b.s)); 
+	});
 }
 #endif //__UTILS_HPP__

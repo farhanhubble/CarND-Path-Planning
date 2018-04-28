@@ -19,6 +19,8 @@ const int EGO_CAR_ID = -1;          // Own car ID.
 
 const double DEFAULT_THROTTLE = 5.0 * SIMULATION_STEP; // Default acceleration/deceleration.
 const int DEFAULT_LANE = 1;
+const int LEFT_MOST_LANE = 0 ;
+const int RIGHT_MOST_LANE = 2;
 const double MIN_SAFE_DISTANCE = 30.0;
 
 enum ACTION_STATES{
@@ -40,9 +42,25 @@ typedef struct {
 
 } CAR_STATE;
 
+
+
+typedef struct{
+    map<int, vector<CAR_STATE>> ahead;
+    map<int, vector<CAR_STATE>> behind;
+} TRAFFIC_MAP;
+
+
+
 typedef struct {
     vector<CAR_STATE> cars_info;
 } WORLD_STATE;
+
+
+
+typedef enum {
+    AHEAD,
+    BEHIND
+} DIRECTION;
 
 
 }
