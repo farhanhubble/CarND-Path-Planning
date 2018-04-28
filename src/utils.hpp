@@ -174,13 +174,11 @@ params::WORLD_STATE to_world_state(vector<vector<double>> sensor_info) {
 		double v_y = car_info[4];
 		double s = car_info[5];
 		double d = car_info[6];
-		//cout << id << " " << d << endl;
 
 		if(d > params::MIN_FRENET_D && d <params::MAX_FRENET_D) {
 			double yaw = rad2deg(atan2(v_y,v_x));
 			double speed = v_x * v_x + v_y * v_y;
 			params::CAR_STATE car_state = {id, x, y, yaw, s, d, speed};
-			cout << id << " " << car_state.d << endl;
 			world_state.cars_info.push_back(car_state);
 		}
 	}
