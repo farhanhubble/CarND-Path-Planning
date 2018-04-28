@@ -21,8 +21,8 @@ private:
 
 	
 	inline void brake(){
-		this->speed -= this->acceleration;
 		cout << "Braking from " << this->speed;
+		this->speed -= this->acceleration;
 		if(this->speed < 0){
 			this->speed = 0;
 		}
@@ -83,7 +83,7 @@ Controller :: Controller(vector<double> map_waypoints_x,
 
 	this->acceleration = params::DEFAULT_THROTTLE;
 	this->lane = params::DEFAULT_LANE;
-	this->speed = params::REF_VELOCITY;
+	this->speed = params::COLD_START_VELOCITY;
     this->map_waypoints_x = map_waypoints_x;
     this->map_waypoints_y = map_waypoints_y;
     this->map_waypoints_s = map_waypoints_s;
@@ -243,6 +243,8 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 
 params::TRAFFIC_MAP
 Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params::WORLD_STATE& world_state){
+	cout << "Total vehicles being tracked:" << world_state.cars_info.size() << endl;
+	int a=0, b =0;
 	params::TRAFFIC_MAP traffic_map;
 
 	/* Group traffic by lane, then by whether its ahead of us or behind us. */
@@ -253,11 +255,13 @@ Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params
 		double separation = delta_s(ego_car_state.s, other_car_state.s);
 	
 		map<int, vector<params::CAR_STATE>> *p_traffic_by_lane = (separation > 0 ? &traffic_map.ahead : &traffic_map.behind);
-	
+		if(p_traffic_by_lane == &traffic_map.ahead) {a++;}
+		else if(p_traffic_by_lane == &traffic_map.behind) {b++;}	
 		auto search = p_traffic_by_lane->find(other_lane);
 		if(search != p_traffic_by_lane->end()){
-			vector<params::CAR_STATE> s = search->second;
-			s.push_back(other_car_state);
+			vector<params::CAR_STATE>* ptr_s = &search->second;
+			ptr_s->push_back(other_car_state);
+			//cout << "Appending to existing vector." << s.size() << endl;
 		}
 		else{
 			vector<params::CAR_STATE> lane_traffic;
@@ -270,12 +274,14 @@ Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params
 	auto __sort__ = [&ego_car_state](const map<int, vector<params::CAR_STATE>> &traffic_map) -> void {
 		for(auto search = traffic_map.begin(); search != traffic_map.end(); ++search){
 		vector<params::CAR_STATE> lane_traffic = search->second;
-		sort_by_abs_distance(ego_car_state, lane_traffic);
+		cout << lane_traffic.size() << " cars in lane " << search->first << endl;
+		sort_by_abs_distance(ego_car_state, lane_traffic); 
 		}
 	};
 	__sort__(traffic_map.ahead);
 	__sort__(traffic_map.behind);
 
+	//cout << "Vehicles ahead: " << a << ", vehicles behind: " << b << endl;
 	return traffic_map;
 }
 
@@ -287,6 +293,7 @@ Controller::get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int la
 	auto search = traffic_by_lane.find(lane_id);
 	if(search != traffic_by_lane.end()) {
 		vector<params::CAR_STATE> other_cars_states = search->second;
+		//cout << other_cars_states.size() << " cars in lane " << lane_id << endl;
 		return &other_cars_states[0];
 	}
 
@@ -307,7 +314,7 @@ void print_traffic_map(const params::TRAFFIC_MAP& traffic_map){
 
 			cout << lane_id << ": ";
 			for(int i=0; i<lane_traffic.size(); i++){
-				cout << "[ " << "id:" << lane_traffic[i].id << " s:" << lane_traffic[i].s << " d:" <<lane_traffic[i].d << endl; 
+				cout << "[ " << "id:" << lane_traffic[i].id << " s:" << lane_traffic[i].s << " d:" <<lane_traffic[i].d << " ]"; 
 			}
 			cout << endl;
 		}
@@ -323,9 +330,11 @@ void print_traffic_map(const params::TRAFFIC_MAP& traffic_map){
 void 
 Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 							  const params::WORLD_STATE &world_state) {
-
 	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
 	int my_lane = to_lane(ego_car_state.d) ;
+	
+	cout << "[ " << "id:" << ego_car_state.id << " s:" << ego_car_state.s << " d:" <<ego_car_state.d << " ]" << endl; 
+	//print_traffic_map(traffic_map);
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
 	if(p_car_ahead == (params::CAR_STATE*)NULL) {

@@ -13,7 +13,8 @@ const double ANCHOR_S_INCR = 30.0;   // Frenet s distance between consecutive an
 const double X_HORIZON = 30.0;	     // Trajectory planning horizon.
 
 const double REF_VELOCITY = 49.0 * 0.44704; // 49 MPH converted to m/s.
-const int TRAJECTORY_SIZE = 50;      // Number of points in the trajectory.
+const double COLD_START_VELOCITY = 9.0*.02;     // 9.0 m/s
+const int TRAJECTORY_SIZE = 50;             // Number of points in the trajectory.
 
 const int EGO_CAR_ID = -1;          // Own car ID.
 
@@ -22,6 +23,9 @@ const int DEFAULT_LANE = 1;
 const int LEFT_MOST_LANE = 0 ;
 const int RIGHT_MOST_LANE = 2;
 const double MIN_SAFE_DISTANCE = 30.0;
+
+const double MIN_FRENET_D = 0.0;
+const double MAX_FRENET_D = 12.0;
 
 enum ACTION_STATES{
     HALT = 0,
