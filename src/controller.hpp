@@ -261,17 +261,15 @@ Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params
 		}
 	}
 
-
 	/* Sort traffic in every lane, both behind us and ahead of us, by absolute distance. */
-	for(auto search = traffic_map.ahead.begin(); search != traffic_map.ahead.end(); ++search){
+	auto __sort__ = [&ego_car_state](const map<int, vector<params::CAR_STATE>> &traffic_map) -> void {
+		for(auto search = traffic_map.begin(); search != traffic_map.end(); ++search){
 		vector<params::CAR_STATE> lane_traffic = search->second;
 		sort_by_abs_distance(ego_car_state, lane_traffic);
-	}
-
-	for(auto search = traffic_map.behind.begin(); search != traffic_map.behind.end(); ++search){
-		vector<params::CAR_STATE> lane_traffic = search->second;
-		sort_by_abs_distance(ego_car_state, lane_traffic);
-	}
+		}
+	};
+	__sort__(traffic_map.ahead);
+	__sort__(traffic_map.behind);
 
 	return traffic_map;
 }
