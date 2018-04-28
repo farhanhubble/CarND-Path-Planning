@@ -320,7 +320,6 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 							  const params::WORLD_STATE &world_state) {
 
 	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
-	print_traffic_map(traffic_map);
 	int my_lane = to_lane(ego_car_state.d) ;
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
