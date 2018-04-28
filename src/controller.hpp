@@ -22,9 +22,12 @@ private:
 	
 	inline void brake(){
 		this->speed -= this->acceleration;
+		cout << "Braking from " << this->speed;
 		if(this->speed < 0){
 			this->speed = 0;
 		}
+
+		cout << " to" << this->speed << endl;
 	}
 
 	params::CAR_STATE* 
@@ -48,10 +51,12 @@ private:
 
 
 	inline void throttle(){
+		cout << "Accelerating from " << this->speed;
 		this->speed += this->acceleration;
 		if(this->speed > params::REF_VELOCITY){
 			this->speed = params::REF_VELOCITY;
 		}
+		cout << " to" << this->speed << endl;
 	}
 
 
@@ -332,12 +337,13 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 		if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
 			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << " their lane: " << other_lane << endl;
 			cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
-			cout << "Separation: " << separation <<endl<<endl;
+			cout << "Separation: " << separation <<endl;
 			brake();
 		} 
 		else{
 			throttle();
 		}
+			cout << endl;
 	}
 }
 
