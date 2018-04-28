@@ -27,6 +27,10 @@ private:
 		}
 	}
 
+	params::CAR_STATE* 
+	get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int lane_id, params::DIRECTION dir);
+
+
     std::tuple<double, double, double> 
 	get_reference_and_anchors_points(const params::CAR_STATE &car_state,
 									vector<double> &previous_path_x,
@@ -34,6 +38,7 @@ private:
 									vector<double> &anchor_xs,
 									vector<double> &anchor_ys);
 	
+
 	params::TRAFFIC_MAP
 	get_traffic_map(const params::CAR_STATE& ego_car_state, const params::WORLD_STATE& world_state);
 
@@ -232,7 +237,7 @@ Controller :: generate_trajectory(const params::CAR_STATE &car_state,
 
 
 params::TRAFFIC_MAP
-Controller::get_traffic_map(params::CAR_STATE& ego_car_state, params::WORLD_STATE& world_state){
+Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params::WORLD_STATE& world_state){
 	params::TRAFFIC_MAP traffic_map;
 
 	/* Group traffic by lane, then by whether its ahead of us or behind us. */
@@ -258,28 +263,31 @@ Controller::get_traffic_map(params::CAR_STATE& ego_car_state, params::WORLD_STAT
 
 
 	/* Sort traffic in every lane, both behind us and ahead of us, by absolute distance. */
-	auto search = traffic_map.ahead.begin();
-	while( search != traffic_map.ahead.end() ){
+	for(auto search = traffic_map.ahead.begin(); search != traffic_map.ahead.end(); ){
 		vector<params::CAR_STATE> lane_traffic = search->second;
 		sort_by_abs_distance(ego_car_state, lane_traffic);
 	}
 
-	auto search = traffic_map.behind.begin();
-	while( search != traffic_map.behind.end() ){
+	for(auto search = traffic_map.behind.begin(); search != traffic_map.behind.end(); ){
 		vector<params::CAR_STATE> lane_traffic = search->second;
 		sort_by_abs_distance(ego_car_state, lane_traffic);
 	}
+
+	return traffic_map;
 }
 
 
 
-params::CAR_STATE get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int lane_id, params::DIRECTION dir){
+params::CAR_STATE* 
+Controller::get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int lane_id, params::DIRECTION dir){
 	map<int, vector<params::CAR_STATE>> traffic_by_lane = (dir == params::AHEAD ? traffic_map.ahead : traffic_map.behind);
 	auto search = traffic_by_lane.find(lane_id);
 	if(search != traffic_by_lane.end()) {
 		vector<params::CAR_STATE> other_cars_states = search->second;
-		return other_cars_states[0];
+		return &other_cars_states[0];
 	}
+
+	return (params::CAR_STATE*)NULL;
 }
 
 
@@ -291,28 +299,21 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
 	int my_lane = to_lane(ego_car_state.d) ;
 	
-	bool car_ahead = false;
-	
-	for(int i=0; i<world_state.cars_info.size(); i++){
-		params::CAR_STATE other_car_state = world_state.cars_info[i];
-		int other_lane =  to_lane(other_car_state.d);
-
-		//cout << my_lane << other_lane << delta_s(car_state.s, other_car_state.s) << endl;
-		
+	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
+	if(p_car_ahead == (params::CAR_STATE*)NULL) {
+		throttle();
+	}
+	else{
+		int other_lane =  to_lane(p_car_ahead->d);
 		if(other_lane == my_lane){
-			double separation = delta_s(ego_car_state.s, other_car_state.s);
+			double separation = delta_s(ego_car_state.s, p_car_ahead->s);
 			if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
-				cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << other_car_state.d << " their lane: " << other_lane << endl;
-				cout << "My s: " << ego_car_state.s << " their s: " << other_car_state.s <<endl;
+				cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << " their lane: " << other_lane << endl;
+				cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
 				cout << "Separation: " << separation <<endl<<endl;
-				car_ahead = true;
 				brake();
 			} 
 		}
-	}
-
-	if(car_ahead == false){
-		throttle();
 	}
 }
 
