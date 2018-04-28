@@ -247,17 +247,17 @@ Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params
 
 		double separation = delta_s(ego_car_state.s, other_car_state.s);
 	
-		map<int, vector<params::CAR_STATE>> traffic_by_lane = (separation > 0 ? traffic_map.ahead : traffic_map.behind);
+		map<int, vector<params::CAR_STATE>> *p_traffic_by_lane = (separation > 0 ? &traffic_map.ahead : &traffic_map.behind);
 	
-		auto search = traffic_by_lane.find(other_lane);
-		if(search != traffic_by_lane.end()){
+		auto search = p_traffic_by_lane->find(other_lane);
+		if(search != p_traffic_by_lane->end()){
 			vector<params::CAR_STATE> s = search->second;
 			s.push_back(other_car_state);
 		}
 		else{
 			vector<params::CAR_STATE> lane_traffic;
 			lane_traffic.push_back(other_car_state);
-			traffic_by_lane.insert(pair< int,vector<params::CAR_STATE> >(other_lane, lane_traffic));
+			p_traffic_by_lane->insert(pair< int,vector<params::CAR_STATE> >(other_lane, lane_traffic));
 		}
 	}
 
@@ -320,6 +320,7 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 							  const params::WORLD_STATE &world_state) {
 
 	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
+	print_traffic_map(traffic_map);
 	int my_lane = to_lane(ego_car_state.d) ;
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
