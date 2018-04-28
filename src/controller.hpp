@@ -328,14 +328,15 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	}
 	else{
 		int other_lane =  to_lane(p_car_ahead->d);
-		if(other_lane == my_lane){
-			double separation = delta_s(ego_car_state.s, p_car_ahead->s);
-			if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
-				cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << " their lane: " << other_lane << endl;
-				cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
-				cout << "Separation: " << separation <<endl<<endl;
-				brake();
-			} 
+		double separation = delta_s(ego_car_state.s, p_car_ahead->s);
+		if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
+			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << " their lane: " << other_lane << endl;
+			cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
+			cout << "Separation: " << separation <<endl<<endl;
+			brake();
+		} 
+		else{
+			throttle();
 		}
 	}
 }
