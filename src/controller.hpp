@@ -263,12 +263,12 @@ Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params
 
 
 	/* Sort traffic in every lane, both behind us and ahead of us, by absolute distance. */
-	for(auto search = traffic_map.ahead.begin(); search != traffic_map.ahead.end(); ){
+	for(auto search = traffic_map.ahead.begin(); search != traffic_map.ahead.end(); ++search){
 		vector<params::CAR_STATE> lane_traffic = search->second;
 		sort_by_abs_distance(ego_car_state, lane_traffic);
 	}
 
-	for(auto search = traffic_map.behind.begin(); search != traffic_map.behind.end(); ){
+	for(auto search = traffic_map.behind.begin(); search != traffic_map.behind.end(); ++search){
 		vector<params::CAR_STATE> lane_traffic = search->second;
 		sort_by_abs_distance(ego_car_state, lane_traffic);
 	}
@@ -288,6 +288,31 @@ Controller::get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int la
 	}
 
 	return (params::CAR_STATE*)NULL;
+}
+
+
+
+void print_traffic_map(const params::TRAFFIC_MAP& traffic_map){
+	map<int, vector<params::CAR_STATE>> traffic_ahead = traffic_map.ahead;
+	map<int, vector<params::CAR_STATE>> traffic_behind = traffic_map.behind;
+
+	auto __print__ = [](const char *header, const map<int, vector<params::CAR_STATE>> &traffic) -> void {
+		cout << "###" << header << "###" <<endl;
+		for(auto it_ahead = traffic.begin(); it_ahead != traffic.end(); ++it_ahead){
+			int lane_id = it_ahead->first;
+			vector<params::CAR_STATE> lane_traffic = it_ahead->second;
+
+			cout << lane_id << ": ";
+			for(int i=0; i<lane_traffic.size(); i++){
+				cout << "[ " << "id:" << lane_traffic[i].id << " s:" << lane_traffic[i].s << " d:" <<lane_traffic[i].d << endl; 
+			}
+			cout << endl;
+		}
+	};
+
+	__print__("AHEAD",traffic_ahead);
+	__print__("BEHIND",traffic_behind);
+	
 }
 
 
