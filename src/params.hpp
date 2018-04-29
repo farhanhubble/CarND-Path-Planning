@@ -3,8 +3,10 @@
 
 #include <vector>
 
+
 using namespace std;
 
+#define MPH2mps(x) (x*0.44704)
 namespace params {
 
 const double SIMULATION_STEP = 0.02; // Simulator timestep in seconds.
@@ -12,17 +14,17 @@ const int NB_ANCHOR_PTS = 5;         // Total number of anchor points for trajec
 const double ANCHOR_S_INCR = 30.0;   // Frenet s distance between consecutive anchor points.
 const double X_HORIZON = 30.0;	     // Trajectory planning horizon.
 
-const double REF_VELOCITY = 49.0 * 0.44704; // 49 MPH converted to m/s.
+const double REF_VELOCITY = MPH2mps(49.0); // 49 MPH converted to m/s.
 const double COLD_START_VELOCITY = 9.0*.02;     // 9.0 m/s
 const int TRAJECTORY_SIZE = 50;             // Number of points in the trajectory.
 
 const int EGO_CAR_ID = -1;          // Own car ID.
 
-const double DEFAULT_THROTTLE = 5.0 * SIMULATION_STEP; // Default acceleration/deceleration.
+const double DEFAULT_THROTTLE = 9.0 * SIMULATION_STEP; // Default acceleration/deceleration.
 const int DEFAULT_LANE = 1;
 const int LEFT_MOST_LANE = 0 ;
 const int RIGHT_MOST_LANE = 2;
-const double MIN_SAFE_DISTANCE = 30.0;
+const double MIN_SAFE_DISTANCE = 45.0;
 
 const double MIN_FRENET_D = 0.0;
 const double MAX_FRENET_D = 12.0;
