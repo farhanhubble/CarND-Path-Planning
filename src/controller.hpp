@@ -154,12 +154,19 @@ Controller::get_reference_and_anchors_points(const params::CAR_STATE &car_state,
 	* These points are equi-spaced in Frenet s coordinates.
 	*/
 	int nb_additional_anchors = params::NB_ANCHOR_PTS-anchor_xs.size(); 
+	
+
+	double s_incr = params::ANCHOR_S_INCR;
+	if(this->action > params::KEEP_LANE){
+		s_incr *= 1.5;
+	}
 	for(int i=0; i<nb_additional_anchors; i++){
-		vector<double> x_y = getXY(car_state.s + (i+1)*params::ANCHOR_S_INCR,
+		vector<double> x_y = getXY(car_state.s + (i+1)*s_incr,
 															center_of(this->lane),
 															this->map_waypoints_s,
 															this->map_waypoints_x,
 															this->map_waypoints_y);
+		
 		anchor_xs.push_back(x_y[0]);
 		anchor_ys.push_back(x_y[1]);
 	}
@@ -355,7 +362,7 @@ Controller :: get_prospective_lanes(const params::TRAFFIC_MAP& traffic_map, cons
 		double delta_behind = p_car_behind == (params::CAR_STATE*)NULL ? 65535 : abs(delta_s(ego_car_state.s, p_car_behind->s));
 		
 		if( delta_ahead  > params::SAFE_FOLLOW_DISTANCE && 
-			delta_behind > params::MIN_SAFE_DISTANCE) {	
+			delta_behind > 0.5*params::MIN_SAFE_DISTANCE) {	
 			feasible_lanes.push_back(tuple<int,double,double>(*it, delta_ahead, delta_behind));
 			switch_map[target_lane] = 'I';
 
