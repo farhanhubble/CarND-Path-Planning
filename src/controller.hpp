@@ -19,17 +19,6 @@ private:
     vector<double> map_waypoints_y;
     vector<double> map_waypoints_s;
 
-	
-	inline void brake(double tgt_speed){
-		if(this->speed > tgt_speed){
-			cout << "Braking from " << this->speed;
-			this->speed -= this->acceleration;
-			if(this->speed < 0){
-				this->speed = 0;
-			}
-			cout << " to " << this->speed << endl;
-		}
-	}
 
 	params::CAR_STATE* 
 	get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int lane_id, params::DIRECTION dir);
@@ -51,15 +40,26 @@ private:
 						   const params::WORLD_STATE &world_state);
 
 
-	inline void throttle(double tgt_speed){
-		if(this->speed < tgt_speed){
-			cout << "Accelerating from " << this->speed;
-			this->speed += this->acceleration;
-			if(this->speed > params::REF_VELOCITY){
-				this->speed = params::REF_VELOCITY;
-			}
-			cout << " to " << this->speed << endl;
+	inline void throttle(double val){
+		if(abs(val) > params::MAX_THROTTLE) { 
+			cout << "ERROR: Throttle value " << val << " exceeds maximum safe throttle.";
+			val = val < -params::MAX_THROTTLE ? -params::MAX_THROTTLE : val;
+			val = val >  params::MAX_THROTTLE ?  params::MAX_THROTTLE : val; 
+			cout << " Adjusting throttle to " << val << endl;
 		}
+		this->acceleration  = val;
+		
+		cout << "Changing speed from " << this->speed;
+		this->speed += this->acceleration;
+
+		if(this->speed < 0){
+			this->speed = 0;
+		}
+		else if(this->speed > params::REF_VELOCITY){
+			this->speed = params::REF_VELOCITY;
+		}
+		cout << " to " << this->speed << endl;
+
 	}
 
 
@@ -84,7 +84,7 @@ Controller :: Controller(vector<double> map_waypoints_x,
                         vector<double> map_waypoints_y,
                         vector<double> map_waypoints_s) {
 
-	this->acceleration = params::DEFAULT_THROTTLE;
+	this->acceleration = params::MAX_THROTTLE;
 	this->lane = params::DEFAULT_LANE;
 	this->speed = params::COLD_START_VELOCITY;
     this->map_waypoints_x = map_waypoints_x;
@@ -337,21 +337,27 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
 	if(p_car_ahead == (params::CAR_STATE*)NULL) {
-		throttle(params::REF_VELOCITY);
+		throttle(params::MAX_THROTTLE);
 		cout << "NO CAR AHEAD" << endl;
 	}
 	else{
 		double separation = delta_s(ego_car_state.s, p_car_ahead->s);
 		cout << "CAR AHEAD AT " << separation << "m." <<endl;
-		if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
+		if(separation  < params::MIN_SAFE_DISTANCE ) {
 			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << endl;
 			cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
 			cout << "Separation: " << separation <<endl;
 			cout << "My speed: " << MPH2mps(ego_car_state.speed)  << " their speed: " << p_car_ahead->speed << endl;
-			brake(0.9 * p_car_ahead->speed);
+			
+			if(ego_car_state.speed >  0.95 * p_car_ahead->speed){
+				throttle(-0.5*params::MAX_THROTTLE);
+			}
+			else{
+				throttle(params::MAX_THROTTLE);
+			}		
 		} 
 		else{
-			throttle(params::REF_VELOCITY);
+			throttle(params::MAX_THROTTLE);
 		}
 			cout << endl;
 	}
