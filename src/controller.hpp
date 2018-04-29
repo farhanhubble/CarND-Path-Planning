@@ -334,41 +334,47 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	
 	//cout << "[ " << "id:" << ego_car_state.id << " s:" << ego_car_state.s << " d:" <<ego_car_state.d << " ]" << endl; 
 	//print_traffic_map(traffic_map);
+
+	params::ACTION_STATES action = params::KEEP_LANE;
+	double desired_throttle = 0;
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
 	if(p_car_ahead == (params::CAR_STATE*)NULL) {
-		throttle(params::MAX_THROTTLE);
+		desired_throttle = params::MAX_THROTTLE;
+		action = params::KEEP_LANE;
 		cout << "NO CAR AHEAD" << endl;
 	}
 	else{
 		double separation = delta_s(ego_car_state.s, p_car_ahead->s);
 		cout << "CAR AHEAD AT " << separation << "m." <<endl;
+		cout << "Self:" << "[ " << "s: " << ego_car_state.s << " d: " << ego_car_state.d << " speed: " << MPH2mps(ego_car_state.speed)   << "(REPORTED) " << this->speed <<"(CONTROLLER)" << " ]" << endl;
+		cout << "Othr:" << "[ " << "s: " << p_car_ahead->s  << " d: " << p_car_ahead->d  << " speed: " << p_car_ahead->speed   << "(REPORTED) "  << " ]"  << endl;
+		
+		if(separation > params::SAFE_FOLLOW_DISTANCE){
+			desired_throttle = params::MAX_THROTTLE;
+			action = params::KEEP_LANE;
+			cout << "Car ahead beyond follow zone. Throttling at " << desired_throttle << endl;
+		}
 
-		if(separation  < params::MIN_SAFE_DISTANCE ) {
-			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << endl;
-			cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
-			cout << "Separation: " << separation <<endl;
-			cout << "My speed: " << MPH2mps(ego_car_state.speed)   << " their speed: " << p_car_ahead->speed << endl;
-			
+		else if(separation <= params::SAFE_FOLLOW_DISTANCE && separation > params::MIN_SAFE_DISTANCE) {
+			double delta_speed = p_car_ahead->speed - this->speed;
+			double t = (separation - params::MIN_SAFE_DISTANCE) / delta_speed;
+			desired_throttle = (delta_speed / t)*params::SIMULATION_STEP;
+			cout << "Car ahead in follow zone. Throttling at " << desired_throttle << endl;
+		}
+
+		else if(separation  < params::MIN_SAFE_DISTANCE ) {
+		
 			if(this->speed >  0.95 * p_car_ahead->speed){
-				cout << "Car ahead in collision zone moving slower. Throttling at " << -params::MAX_THROTTLE << endl;
-				throttle(-params::MAX_THROTTLE);
+				desired_throttle = -params::MAX_THROTTLE;
+				action = params::KEEP_LANE;
+				cout << "Car ahead in collision zone moving slower. Throttling at " << desired_throttle << endl;
 			}		
 			cout << "Car ahead in collision zone moving faster. Not throttling" << endl;
 		}
-		else if(separation < params::SAFE_FOLLOW_DISTANCE) {
-			double delta_speed = p_car_ahead->speed - this->speed;
-			double t = (separation - params::MIN_SAFE_DISTANCE) / delta_speed;
-			double desired_throttle = delta_speed / t;
-			cout << "Car ahead in follow zone. Throttling at " << desired_throttle*params::SIMULATION_STEP << endl;
-			throttle(desired_throttle*params::SIMULATION_STEP);
-		}
-		else{
-			cout << "Car ahead beyond follow zone. Throttling at " << params::MAX_THROTTLE << endl;
-			throttle(params::MAX_THROTTLE);
-		}
-			cout << endl;
+		cout << endl;
 	}
+	throttle(desired_throttle);
 }
 
 #endif //__CONTROLLER_HPP__

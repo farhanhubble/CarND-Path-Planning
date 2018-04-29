@@ -30,12 +30,12 @@ const double SAFE_FOLLOW_DISTANCE = 1.5 * MIN_SAFE_DISTANCE;
 const double MIN_FRENET_D = 0.0;
 const double MAX_FRENET_D = 12.0;
 
-enum ACTION_STATES{
+typedef enum {
     HALT = 0,
     KEEP_LANE ,
     CHANGE_LANE_LEFT,
     CHANGE_LANE_RIGHT,
-};
+} ACTION_STATES;
 
 
 typedef struct {
