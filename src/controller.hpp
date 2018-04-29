@@ -15,13 +15,23 @@ private:
 	double acceleration;
 	double speed;
 	double lane;
+	params::ACTION_STATES action;
     vector<double> map_waypoints_x;
     vector<double> map_waypoints_y;
     vector<double> map_waypoints_s;
 
 
+	vector<tuple<int,double,double>>
+	get_prospective_lanes(const params::TRAFFIC_MAP& traffic_map, 
+					   const params::CAR_STATE &ego_car_state, 
+					   vector<int> target_lanes);
+
+
 	params::CAR_STATE* 
 	get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int lane_id, params::DIRECTION dir);
+
+	vector<tuple<int,double,double>>  
+	get_new_lane(const params::TRAFFIC_MAP& traffic_map, const params::CAR_STATE& ego_car_state);
 
 
     std::tuple<double, double, double> 
@@ -34,6 +44,10 @@ private:
 
 	params::TRAFFIC_MAP
 	get_traffic_map(const params::CAR_STATE& ego_car_state, const params::WORLD_STATE& world_state);
+
+
+	void
+	print_traffic_map(const params::TRAFFIC_MAP& traffic_map);
 
 
 	void set_target_params(const params::CAR_STATE &car_state,
@@ -85,6 +99,7 @@ Controller :: Controller(vector<double> map_waypoints_x,
                         vector<double> map_waypoints_s) {
 
 	this->acceleration = params::MAX_THROTTLE;
+	this->action = params::KEEP_LANE;
 	this->lane = params::DEFAULT_LANE;
 	this->speed = params::COLD_START_VELOCITY;
     this->map_waypoints_x = map_waypoints_x;
@@ -301,7 +316,8 @@ Controller::get_nearest_car(const params::TRAFFIC_MAP &traffic_map, const int la
 
 
 
-void print_traffic_map(const params::TRAFFIC_MAP& traffic_map){
+void 
+Controller::print_traffic_map(const params::TRAFFIC_MAP& traffic_map){
 	map<int, vector<params::CAR_STATE>> traffic_ahead = traffic_map.ahead;
 	map<int, vector<params::CAR_STATE>> traffic_behind = traffic_map.behind;
 
@@ -325,12 +341,72 @@ void print_traffic_map(const params::TRAFFIC_MAP& traffic_map){
 }
 
 
+vector<tuple<int,double,double>> 
+Controller :: get_prospective_lanes(const params::TRAFFIC_MAP& traffic_map, const params::CAR_STATE &ego_car_state, vector<int> target_lanes){
+	vector<tuple<int, double, double>> feasible_lanes;
+	char switch_map[3] = {'X','X','X'};
+
+	for(auto it=target_lanes.begin(); it!= target_lanes.end(); ++it){
+		int target_lane = *it;
+		const params::CAR_STATE *p_car_ahead  = get_nearest_car(traffic_map, target_lane, params::AHEAD);
+		const params::CAR_STATE *p_car_behind = get_nearest_car(traffic_map, target_lane, params::BEHIND);
+
+		double delta_ahead  = p_car_ahead  == (params::CAR_STATE*)NULL ? 65535 : abs(delta_s(ego_car_state.s, p_car_ahead->s));
+		double delta_behind = p_car_behind == (params::CAR_STATE*)NULL ? 65535 : abs(delta_s(ego_car_state.s, p_car_behind->s));
+		
+		if( delta_ahead  > params::SAFE_FOLLOW_DISTANCE && 
+			delta_behind > params::MIN_SAFE_DISTANCE) {	
+			feasible_lanes.push_back(tuple<int,double,double>(*it, delta_ahead, delta_behind));
+			switch_map[target_lane] = 'I';
+
+		}
+	}
+	switch_map[to_lane(ego_car_state.d)] = 'O';
+	cout << switch_map[0] << " " << switch_map[1] << " " << switch_map[2] << endl <<endl;
+	return feasible_lanes;
+}
+
+
+
+vector<tuple<int,double,double>>  
+Controller::get_new_lane(const params::TRAFFIC_MAP& traffic_map, const params::CAR_STATE& ego_car_state){
+	int my_lane = to_lane(ego_car_state.d);
+
+	vector<int> targets;
+	if(my_lane == 0){
+		targets.push_back(1);
+		targets.push_back(2);
+	}
+	else if(my_lane == 1){
+		targets.push_back(0);
+		targets.push_back(2);
+	}
+
+	else if(my_lane == 2){
+		targets.push_back(0);
+		targets.push_back(1);
+	}
+
+	return get_prospective_lanes(traffic_map, ego_car_state, targets);
+
+}
+
+
 
 void 
 Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 							  const params::WORLD_STATE &world_state) {
-	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
 	int my_lane = to_lane(ego_car_state.d) ;
+	if(this->action == params::CHANGE_LANE_LEFT || this->action == params::CHANGE_LANE_RIGHT){
+		/* If lane change in progress, parameters remain unchanged. */
+		if(my_lane != this->lane){
+			cout << "Lane change ongoing, blocking parameter update." << endl;
+			return;
+		}
+	}
+	
+	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
+	
 	
 	//cout << "[ " << "id:" << ego_car_state.id << " s:" << ego_car_state.s << " d:" <<ego_car_state.d << " ]" << endl; 
 	//print_traffic_map(traffic_map);
@@ -347,8 +423,8 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	else{
 		double separation = delta_s(ego_car_state.s, p_car_ahead->s);
 		cout << "CAR AHEAD AT " << separation << "m." <<endl;
-		cout << "Self:" << "[ " << "s: " << ego_car_state.s << " d: " << ego_car_state.d << " speed: " << MPH2mps(ego_car_state.speed)   << "(REPORTED) " << this->speed <<"(CONTROLLER)" << " ]" << endl;
-		cout << "Othr:" << "[ " << "s: " << p_car_ahead->s  << " d: " << p_car_ahead->d  << " speed: " << p_car_ahead->speed   << "(REPORTED) "  << " ]"  << endl;
+		//cout << "Self:" << "[ " << "s: " << ego_car_state.s << " d: " << ego_car_state.d << " speed: " << MPH2mps(ego_car_state.speed)   << "(REPORTED) " << this->speed <<"(CONTROLLER)" << " ]" << endl;
+		//cout << "Othr:" << "[ " << "s: " << p_car_ahead->s  << " d: " << p_car_ahead->d  << " speed: " << p_car_ahead->speed   << "(REPORTED) "  << " ]"  << endl;
 		
 		if(separation > params::SAFE_FOLLOW_DISTANCE){
 			desired_throttle = params::MAX_THROTTLE;
@@ -357,24 +433,46 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 		}
 
 		else if(separation <= params::SAFE_FOLLOW_DISTANCE && separation > params::MIN_SAFE_DISTANCE) {
-			double delta_speed = p_car_ahead->speed - this->speed;
-			double t = (separation - params::MIN_SAFE_DISTANCE) / delta_speed;
-			desired_throttle = (delta_speed / t)*params::SIMULATION_STEP;
-			cout << "Car ahead in follow zone. Throttling at " << desired_throttle << endl;
+			auto target_lanes = get_new_lane(traffic_map, ego_car_state);
+			
+			/* Change lane if possible, not already doing so. */
+			if(target_lanes.size() != 0 && this->action == params::KEEP_LANE){
+				desired_throttle = params::MAX_THROTTLE;
+				for(auto it=target_lanes.begin(); it != target_lanes.end(); ++it){
+					int tgt_lane = get<0>(*it);
+					if(tgt_lane ==  my_lane-1 || tgt_lane == my_lane+1){
+						action = tgt_lane == my_lane-1 ? params::CHANGE_LANE_LEFT : params::CHANGE_LANE_RIGHT;
+						break;		
+					}
+				}
+			}
+			else{
+				double delta_speed = p_car_ahead->speed - this->speed;
+				double t = (separation - params::MIN_SAFE_DISTANCE) / delta_speed;
+				desired_throttle = (delta_speed / t)*params::SIMULATION_STEP;
+				cout << "Car ahead in follow zone. Throttling at " << desired_throttle << endl;
+			}
 		}
 
-		else if(separation  < params::MIN_SAFE_DISTANCE ) {
-		
+		else if(separation  < params::MIN_SAFE_DISTANCE ) {			
 			if(this->speed >  0.95 * p_car_ahead->speed){
 				desired_throttle = -params::MAX_THROTTLE;
 				action = params::KEEP_LANE;
 				cout << "Car ahead in collision zone moving slower. Throttling at " << desired_throttle << endl;
 			}		
 			cout << "Car ahead in collision zone moving faster. Not throttling" << endl;
-		}
-		cout << endl;
+		}	
+	}
+
+	cout << "action= " << action << endl;
+	if(action != params::KEEP_LANE){
+		cout << "Change lanes from " << this->lane;
+		this->lane = this->lane + (action == params::CHANGE_LANE_LEFT? -1 : +1 );
+		cout << " to " << this->lane  << endl;
 	}
 	throttle(desired_throttle);
+	this->action = action;
+	cout << endl;
 }
 
 #endif //__CONTROLLER_HPP__
