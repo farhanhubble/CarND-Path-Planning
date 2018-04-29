@@ -158,7 +158,7 @@ Controller::get_reference_and_anchors_points(const params::CAR_STATE &car_state,
 
 	double s_incr = params::ANCHOR_S_INCR;
 	if(this->action > params::KEEP_LANE){
-		s_incr *= 1.5;
+		s_incr *= 1.6;
 	}
 	for(int i=0; i<nb_additional_anchors; i++){
 		vector<double> x_y = getXY(car_state.s + (i+1)*s_incr,
@@ -361,8 +361,8 @@ Controller :: get_prospective_lanes(const params::TRAFFIC_MAP& traffic_map, cons
 		double delta_ahead  = p_car_ahead  == (params::CAR_STATE*)NULL ? 65535 : abs(delta_s(ego_car_state.s, p_car_ahead->s));
 		double delta_behind = p_car_behind == (params::CAR_STATE*)NULL ? 65535 : abs(delta_s(ego_car_state.s, p_car_behind->s));
 		
-		if( delta_ahead  > params::SAFE_FOLLOW_DISTANCE && 
-			delta_behind > 0.5*params::MIN_SAFE_DISTANCE) {	
+		if( delta_ahead  > params::MIN_SAFE_DISTANCE && 
+			delta_behind > 20) {	
 			feasible_lanes.push_back(tuple<int,double,double>(*it, delta_ahead, delta_behind));
 			switch_map[target_lane] = 'I';
 
