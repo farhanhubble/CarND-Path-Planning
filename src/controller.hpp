@@ -20,14 +20,15 @@ private:
     vector<double> map_waypoints_s;
 
 	
-	inline void brake(){
-		cout << "Braking from " << this->speed;
-		this->speed -= this->acceleration;
-		if(this->speed < 0){
-			this->speed = 0;
+	inline void brake(double tgt_speed){
+		if(this->speed > tgt_speed){
+			cout << "Braking from " << this->speed;
+			this->speed -= this->acceleration;
+			if(this->speed < 0){
+				this->speed = 0;
+			}
+			cout << " to " << this->speed << endl;
 		}
-
-		cout << " to" << this->speed << endl;
 	}
 
 	params::CAR_STATE* 
@@ -50,13 +51,15 @@ private:
 						   const params::WORLD_STATE &world_state);
 
 
-	inline void throttle(){
-		cout << "Accelerating from " << this->speed;
-		this->speed += this->acceleration;
-		if(this->speed > params::REF_VELOCITY){
-			this->speed = params::REF_VELOCITY;
+	inline void throttle(double tgt_speed){
+		if(this->speed < tgt_speed){
+			cout << "Accelerating from " << this->speed;
+			this->speed += this->acceleration;
+			if(this->speed > params::REF_VELOCITY){
+				this->speed = params::REF_VELOCITY;
+			}
+			cout << " to " << this->speed << endl;
 		}
-		cout << " to" << this->speed << endl;
 	}
 
 
@@ -269,11 +272,11 @@ Controller::get_traffic_map(const params::CAR_STATE& ego_car_state, const params
 		}
 	}
 
-	/* Sort traffic in every lane, both behind us and ahead of us, by absolute distance. */
-	auto __sort__ = [&ego_car_state](const map<int, vector<params::CAR_STATE>> &traffic_map) -> void {
+	/* Sort traffic in every lane, both behind us and ahead of us, by absolute distance from our vehicle */
+	auto __sort__ = [&ego_car_state](map<int, vector<params::CAR_STATE>> &traffic_map) -> void {
 		for(auto search = traffic_map.begin(); search != traffic_map.end(); ++search){
-		vector<params::CAR_STATE> lane_traffic = search->second;
-		sort_by_abs_distance(ego_car_state, lane_traffic); 
+		vector<params::CAR_STATE>* ptr_lane_traffic = &search->second;
+		sort_by_abs_distance(ego_car_state, ptr_lane_traffic); 
 		}
 	};
 	__sort__(traffic_map.ahead);
@@ -334,19 +337,21 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
 	if(p_car_ahead == (params::CAR_STATE*)NULL) {
-		throttle();
+		throttle(params::REF_VELOCITY);
+		cout << "NO CAR AHEAD" << endl;
 	}
 	else{
-		int other_lane =  to_lane(p_car_ahead->d);
 		double separation = delta_s(ego_car_state.s, p_car_ahead->s);
+		cout << "CAR AHEAD AT " << separation << "m." <<endl;
 		if(separation > 0 && separation  < params::MIN_SAFE_DISTANCE ) {
-			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << " their lane: " << other_lane << endl;
+			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << endl;
 			cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
 			cout << "Separation: " << separation <<endl;
-			brake();
+			cout << "My speed: " << MPH2mps(ego_car_state.speed)  << " their speed: " << p_car_ahead->speed << endl;
+			brake(0.9 * p_car_ahead->speed);
 		} 
 		else{
-			throttle();
+			throttle(params::REF_VELOCITY);
 		}
 			cout << endl;
 	}
