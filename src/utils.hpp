@@ -177,7 +177,7 @@ params::WORLD_STATE to_world_state(vector<vector<double>> sensor_info) {
 
 		if(d > params::MIN_FRENET_D && d <params::MAX_FRENET_D) {
 			double yaw = rad2deg(atan2(v_y,v_x));
-			double speed = v_x * v_x + v_y * v_y;
+			double speed = sqrt(v_x * v_x + v_y * v_y);
 			params::CAR_STATE car_state = {id, x, y, yaw, s, d, speed};
 			world_state.cars_info.push_back(car_state);
 		}
@@ -283,10 +283,10 @@ double delta_s(double my_s, double his_s){
 
 
 
-void sort_by_abs_distance(const params::CAR_STATE &ego_car_state, vector<params::CAR_STATE> &lane_traffic){
-	std::sort(lane_traffic.begin(), lane_traffic.end(), [&ego_car_state](const params::CAR_STATE & car_a, const params::CAR_STATE & car_b) -> bool
+void sort_by_abs_distance(const params::CAR_STATE &ego_car_state, vector<params::CAR_STATE>* ptr_lane_traffic){
+	std::sort(ptr_lane_traffic->begin(), ptr_lane_traffic->end(), [&ego_car_state](const params::CAR_STATE & car_a, const params::CAR_STATE & car_b) -> bool
 	{ 
-		return abs(delta_s(ego_car_state.s,car_a.s)) > abs(delta_s(ego_car_state.s, car_b.s));
+		return abs(delta_s(ego_car_state.s,car_a.s)) < abs(delta_s(ego_car_state.s, car_b.s));
 	});
 }
 #endif //__UTILS_HPP__
