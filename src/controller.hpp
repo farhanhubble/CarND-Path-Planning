@@ -332,8 +332,8 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	params::TRAFFIC_MAP traffic_map = get_traffic_map(ego_car_state, world_state);
 	int my_lane = to_lane(ego_car_state.d) ;
 	
-	cout << "[ " << "id:" << ego_car_state.id << " s:" << ego_car_state.s << " d:" <<ego_car_state.d << " ]" << endl; 
-	print_traffic_map(traffic_map);
+	//cout << "[ " << "id:" << ego_car_state.id << " s:" << ego_car_state.s << " d:" <<ego_car_state.d << " ]" << endl; 
+	//print_traffic_map(traffic_map);
 	
 	const params::CAR_STATE *p_car_ahead = get_nearest_car(traffic_map, my_lane, params::AHEAD);
 	if(p_car_ahead == (params::CAR_STATE*)NULL) {
@@ -343,20 +343,28 @@ Controller::set_target_params(const params::CAR_STATE &ego_car_state,
 	else{
 		double separation = delta_s(ego_car_state.s, p_car_ahead->s);
 		cout << "CAR AHEAD AT " << separation << "m." <<endl;
+
 		if(separation  < params::MIN_SAFE_DISTANCE ) {
 			cout << "My d: " << ego_car_state.d << " my lane: " << my_lane << ", their d: " << p_car_ahead->d << endl;
 			cout << "My s: " << ego_car_state.s << " their s: " << p_car_ahead->s <<endl;
 			cout << "Separation: " << separation <<endl;
-			cout << "My speed: " << MPH2mps(ego_car_state.speed)  << " their speed: " << p_car_ahead->speed << endl;
+			cout << "My speed: " << MPH2mps(ego_car_state.speed)   << " their speed: " << p_car_ahead->speed << endl;
 			
-			if(ego_car_state.speed >  0.95 * p_car_ahead->speed){
-				throttle(-0.5*params::MAX_THROTTLE);
-			}
-			else{
-				throttle(params::MAX_THROTTLE);
+			if(this->speed >  0.95 * p_car_ahead->speed){
+				cout << "Car ahead in collision zone moving slower. Throttling at " << -params::MAX_THROTTLE << endl;
+				throttle(-params::MAX_THROTTLE);
 			}		
-		} 
+			cout << "Car ahead in collision zone moving faster. Not throttling" << endl;
+		}
+		else if(separation < params::SAFE_FOLLOW_DISTANCE) {
+			double delta_speed = p_car_ahead->speed - this->speed;
+			double t = (separation - params::MIN_SAFE_DISTANCE) / delta_speed;
+			double desired_throttle = delta_speed / t;
+			cout << "Car ahead in follow zone. Throttling at " << desired_throttle*params::SIMULATION_STEP << endl;
+			throttle(desired_throttle*params::SIMULATION_STEP);
+		}
 		else{
+			cout << "Car ahead beyond follow zone. Throttling at " << params::MAX_THROTTLE << endl;
 			throttle(params::MAX_THROTTLE);
 		}
 			cout << endl;
