@@ -10,7 +10,7 @@ using namespace std;
 namespace params {
 
 const double SIMULATION_STEP = 0.02; // Simulator timestep in seconds.
-const int NB_ANCHOR_PTS = 5;         // Total number of anchor points for trajectory generation.   
+const int NB_ANCHOR_PTS = 7;         // Total number of anchor points for trajectory generation.   
 const double ANCHOR_S_INCR = 30.0;   // Frenet s distance between consecutive anchor points.
 const double X_HORIZON = 30.0;	     // Trajectory planning horizon.
 
