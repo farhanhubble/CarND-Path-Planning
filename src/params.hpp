@@ -20,11 +20,11 @@ const int TRAJECTORY_SIZE = 50;             // Number of points in the trajector
 
 const int EGO_CAR_ID = -1;          // Own car ID.
 
-const double DEFAULT_THROTTLE = 9.0 * SIMULATION_STEP; // Default acceleration/deceleration.
+const double DEFAULT_THROTTLE = 25.0 * SIMULATION_STEP; // Default acceleration/deceleration.
 const int DEFAULT_LANE = 1;
 const int LEFT_MOST_LANE = 0 ;
 const int RIGHT_MOST_LANE = 2;
-const double MIN_SAFE_DISTANCE = 45.0;
+const double MIN_SAFE_DISTANCE = 30.0;
 
 const double MIN_FRENET_D = 0.0;
 const double MAX_FRENET_D = 12.0;
